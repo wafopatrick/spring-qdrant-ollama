@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qdrant + Ollama Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .search-form {
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .ai-answer {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .documents {
+            margin-top: 20px;
+        }
+        .document {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .document h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .document .meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .document .content {
+            color: #555;
+            line-height: 1.5;
+        }
+        .similarity {
+            float: right;
+            background-color: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .stats {
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Qdrant + Ollama Search</h1>
+        
+        <div class="search-form">
+            <div class="form-group">
+                <label for="query">Search Query:</label>
+                <input type="text" id="query" placeholder="Enter your search query..." value="What is machine learning?">
+            </div>
+            <div class="form-group">
+                <label for="maxResults">Maximum Results:</label>
+                <input type="number" id="maxResults" value="5" min="1" max="10">
+            </div>
+            <button onclick="search()">Search</button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Searching... Please wait...
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function search() {
+            const query = document.getElementById('query').value;
+            const maxResults = document.getElementById('maxResults').value;
+            
+            if (!query.trim()) {
+                alert('Please enter a search query');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').innerHTML = '';
+            
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        maxResults: parseInt(maxResults)
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                displayResult(data);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        Error: ${error.message}
+                    </div>
+                `;
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        function displayResult(data) {
+            const resultDiv = document.getElementById('result');
+            
+            let documentsHtml = '';
+            if (data.similarDocuments && data.similarDocuments.length > 0) {
+                documentsHtml = '<div class="documents"><h3>Similar Documents:</h3>';
+                data.similarDocuments.forEach(doc => {
+                    documentsHtml += `
+                        <div class="document">
+                            <span class="similarity">${(doc.similarity * 100).toFixed(1)}%</span>
+                            <h4>${doc.title}</h4>
+                            <div class="meta">
+                                <strong>Category:</strong> ${doc.category} | 
+                                <strong>Author:</strong> ${doc.author}
+                            </div>
+                            <div class="content">${doc.content}</div>
+                        </div>
+                    `;
+                });
+                documentsHtml += '</div>';
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="result">
+                    <h3>Search Results for: "${data.query}"</h3>
+                    
+                    <div class="ai-answer">
+                        <h4>🤖 AI Answer:</h4>
+                        <p>${data.aiAnswer}</p>
+                    </div>
+                    
+                    ${documentsHtml}
+                    
+                    <div class="stats">
+                        Search completed in ${data.searchTimeMs}ms
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Allow Enter key to trigger search
+        document.getElementById('query').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                search();
+            }
+        });
+    </script>
+</body>
+</html> 
