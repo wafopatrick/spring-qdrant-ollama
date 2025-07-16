@@ -81,7 +81,7 @@ public class MockDataService {
                // Since we don't know the exact field names, we'll try a few common approaches
                DeleteParam deleteParam = DeleteParam.newBuilder()
                        .withCollectionName(collectionName)
-                       .withExpr("id > 0") // This should match all documents
+                       .withExpr("doc_id != ''") // This should match all documents
                        .build();
                milvusClient.delete(deleteParam);
                logger.info("Successfully deleted all documents from the milvus collection '{}'", collectionName);
