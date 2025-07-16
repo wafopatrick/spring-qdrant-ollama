@@ -54,7 +54,7 @@ services:
       - "9001:9001"
       - "9000:9000"
     volumes:
-      - ./milvus_data/minio:/data
+      - minio_data:/data
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -82,3 +82,4 @@ volumes:
   milvus_etcd_data:
   milvus_minio_data:
   milvus_data:
+  minio_data:
