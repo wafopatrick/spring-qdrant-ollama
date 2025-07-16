@@ -1,10 +1,10 @@
-# Qdrant + Ollama Search Application
+# Qdrant/Milvus + Ollama Search Application
 
-This Spring Boot application demonstrates semantic search using Qdrant vector database and AI-powered responses using Ollama with the Llama 3.1 model.
+This Spring Boot application demonstrates semantic search using Qdrant or Milvus as a vector database and AI-powered responses using Ollama with the Llama 3.1 model.
 
 ## Features
 
-- **Vector Search**: Uses Qdrant for semantic similarity search
+- **Vector Search**: Uses Qdrant or Milvus for semantic similarity search
 - **AI Integration**: Leverages Ollama with Llama 3.1 for intelligent responses
 - **Mock Data**: Includes 15 diverse documents across Technology, Science, Business, Health, and Education
 - **REST API**: Simple HTTP endpoints for search functionality
@@ -17,13 +17,13 @@ This Spring Boot application demonstrates semantic search using Qdrant vector da
 
 ## Setup Instructions
 
-### 1. Start Qdrant
+### 1. Start Qdrant/Milvus
 
 ```bash
 docker-compose up -d
 ```
 
-This will start Qdrant on port 6333.
+This will start Qdrant on port 6333 and Milvus on port 19530.
 
 ### 2. Install and Start Ollama
 
@@ -43,11 +43,27 @@ ollama serve
 
 ### 3. Run the Application
 
+To switch between Qdrant and Milvus, you need to update the `application.properties` file located in `src/main/resources`.
+
+- **For Qdrant**:
+
+  ```properties
+  vector-store.provider=qdrant
+  ```
+
+- **For Milvus**:
+
+  ```properties
+  vector-store.provider=milvus
+  ```
+
+Then run the application:
+
 ```bash
 ./gradlew bootRun
 ```
 
-The application will start on port 8080 and automatically initialize mock data in Qdrant.
+The application will start on port 8080 and automatically initialize mock data in the selected vector store.
 
 ## API Endpoints
 
@@ -175,7 +191,7 @@ The application includes 15 documents across 5 categories:
 
 ## Architecture
 
-1. **Qdrant Vector Store**: Stores document embeddings for semantic search
+1. **Qdrant/Milvus Vector Store**: Stores document embeddings for semantic search
 2. **Ollama Integration**: Provides AI-powered responses using Llama 3.1
 3. **Spring AI**: Handles vector operations and AI model interactions
 4. **REST API**: Exposes search functionality via HTTP endpoints
@@ -186,6 +202,10 @@ The application includes 15 documents across 5 categories:
 - Ensure Docker is running
 - Check if Qdrant is accessible at `http://localhost:6333`
 - Verify the collection is created: `curl http://localhost:6333/collections/documents`
+
+### Milvus Connection Issues
+- Ensure Docker is running
+- Check if Milvus is accessible at `http://localhost:19530`
 
 ### Ollama Issues
 - Ensure Ollama is running: `ollama serve`

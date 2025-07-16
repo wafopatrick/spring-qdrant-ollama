@@ -8,6 +8,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,7 +27,7 @@ public class SearchService {
     private final MockDataService mockDataService;
 
     @Autowired
-    public SearchService(VectorStore vectorStore, OllamaChatModel chatModel, MockDataService mockDataService) {
+    public SearchService(@Qualifier("customVectorStore") VectorStore vectorStore, OllamaChatModel chatModel, MockDataService mockDataService) {
         this.vectorStore = vectorStore;
         this.chatModel = chatModel;
         this.mockDataService = mockDataService;
@@ -38,7 +39,7 @@ public class SearchService {
             // Perform similarity search using VectorStore with SearchRequest
             org.springframework.ai.vectorstore.SearchRequest vectorSearchRequest =  org.springframework.ai.vectorstore.SearchRequest.builder().query(request.query())
                     .topK(request.maxResults())
-                    .similarityThreshold(0.7) // Adjust the threshold as needed
+                    .similarityThreshold(0.3) // Adjust the threshold as needed
                     .build();
             List<Document> similarDocuments = Optional.ofNullable(vectorStore.similaritySearch(vectorSearchRequest)).orElse(List.of());
 

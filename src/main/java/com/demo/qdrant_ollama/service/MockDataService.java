@@ -1,15 +1,22 @@
 package com.demo.qdrant_ollama.service;
 
 import com.demo.qdrant_ollama.model.Document;
+import io.milvus.client.MilvusClient;
+import io.milvus.param.dml.DeleteParam;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.Points;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.vectorstore.qdrant.QdrantVectorStore;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -17,15 +24,26 @@ public class MockDataService {
 
     private static final Logger logger = LoggerFactory.getLogger(MockDataService.class);
 
-    private final QdrantVectorStore vectorStore;
+    private final VectorStore vectorStore;
 
     @Autowired
-    public MockDataService(QdrantVectorStore vectorStore) {
+    public MockDataService(@Qualifier("customVectorStore") VectorStore vectorStore) {
         this.vectorStore = vectorStore;
     }
 
+    @PostConstruct
+    public void initializeDataOnStartup() {
+        logger.info("Initializing application data...");
+        try {
+            initializeMockData();
+            logger.info("Application data initialized successfully");
+        } catch (Exception e) {
+            logger.error("Failed to initialize data: ", e);
+        }
+    }
+
     public void initializeMockData() {
-        logger.info("Initializing mock data in Qdrant...");
+        logger.info("Initializing mock data in the vector store DB...");
 
         // avoid adding duplicate documents by deleting existing ones
         deleteAllDocuments();
@@ -35,31 +53,45 @@ public class MockDataService {
 
         vectorStore.add(aiDocuments);
 
-        logger.info("Successfully added {} documents to Qdrant", documents.size());
+        logger.info("Successfully added {} documents to the vector store", documents.size());
     }
 
     private void deleteAllDocuments() {
         String collectionName = "documents";
         logger.info("Deleting all existing documents from collection '{}'...", collectionName);
-        Optional<QdrantClient> nativeClient = vectorStore.getNativeClient();
-        if (nativeClient.isPresent()) {
-            QdrantClient qdrantClient = nativeClient.get();
+        vectorStore.getNativeClient();
+        if (vectorStore.getNativeClient().isPresent() && vectorStore.getNativeClient().get() instanceof QdrantClient nativeClient) {
             try {
                 // create an empty filter to match all documents
                 Points.Filter filter = Points.Filter.newBuilder().build();
 
-                qdrantClient.deleteAsync(
+                nativeClient.deleteAsync(
                         Points.DeletePoints.newBuilder()
                                 .setCollectionName(collectionName)
                                 .setPoints(Points.PointsSelector.newBuilder().setFilter(filter).build())
                                 .build()
                 ).get();
-                logger.info("Successfully deleted all documents from collection '{}'", collectionName);
+                logger.info("Successfully deleted all documents from the qdrant collection '{}'", collectionName);
             } catch (InterruptedException | ExecutionException e) {
-                logger.error("Failed to delete document from collection '{}'", collectionName, e);
+                logger.error("Failed to delete document from qdrant collection '{}'", collectionName, e);
+            }
+        } else if (vectorStore.getNativeClient().isPresent() && vectorStore.getNativeClient().get() instanceof MilvusClient milvusClient) {
+           try {
+               // For Milvus, we need to use a valid expression that matches all documents
+               // Since we don't know the exact field names, we'll try a few common approaches
+               DeleteParam deleteParam = DeleteParam.newBuilder()
+                       .withCollectionName(collectionName)
+                       .withExpr("id > 0") // This should match all documents
+                       .build();
+               milvusClient.delete(deleteParam);
+               logger.info("Successfully deleted all documents from the milvus collection '{}'", collectionName);
+            } catch (Exception e) {
+                logger.error("Failed to delete documents from the milvus collection '{}'", collectionName, e);
+                // If the delete fails, we'll continue anyway - the new documents will be added
+                logger.info("Continuing with data initialization despite delete failure");
             }
         } else {
-            logger.error("QdrantClient not available. Cannot delete documents from collection '{}'", collectionName);
+            logger.error("Vector store client not available. Cannot delete documents from collection '{}'", collectionName);
         }
     }
 
