@@ -39,7 +39,7 @@ public class SearchService {
             // Perform similarity search using VectorStore with SearchRequest
             org.springframework.ai.vectorstore.SearchRequest vectorSearchRequest =  org.springframework.ai.vectorstore.SearchRequest.builder().query(request.query())
                     .topK(request.maxResults())
-                    .similarityThreshold(0.3) // Adjust the threshold as needed
+                    .similarityThreshold(0.7) // Adjust the threshold as needed
                     .build();
             List<Document> similarDocuments = Optional.ofNullable(vectorStore.similaritySearch(vectorSearchRequest)).orElse(List.of());
 
