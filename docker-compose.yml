@@ -22,9 +22,9 @@ services:
       - "19530:19530"
       - "9091:9091"
     volumes:
-      - ./milvus_data/etcd:/var/lib/milvus/etcd
-      - ./milvus_data/minio:/var/lib/milvus/minio
-      - ./milvus_data/data:/var/lib/milvus/data
+      - milvus_etcd_data:/var/lib/milvus/etcd
+      - milvus_minio_data:/var/lib/milvus/minio
+      - milvus_data:/var/lib/milvus/data
     depends_on:
       etcd:
         condition: service_healthy
@@ -39,7 +39,7 @@ services:
     image: quay.io/coreos/etcd:v3.5.14
     container_name: milvus-etcd
     volumes:
-      - ./milvus_data/etcd:/etcd
+      - milvus_etcd_data:/etcd
     command: etcd --advertise-client-urls http://127.0.0.1:2379 --listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
       test: ["CMD", "etcdctl", "--endpoints=http://localhost:2379", "endpoint", "health"]
@@ -78,4 +78,7 @@ services:
         condition: service_started
 
 volumes:
-  qdrant_storage: 
+  qdrant_storage:
+  milvus_etcd_data:
+  milvus_minio_data:
+  milvus_data:
