@@ -10,6 +10,8 @@ import io.milvus.param.index.CreateIndexParam;
 import io.milvus.param.index.DescribeIndexParam;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.ollama.api.OllamaApi;
@@ -27,6 +29,8 @@ import java.util.List;
 
 @Configuration
 public class VectorStoreConfig {
+
+    private final Logger logger = LoggerFactory.getLogger(VectorStoreConfig.class);
 
     @Value("${vector-store.provider:qdrant}")
     private String vectorStoreProvider;
@@ -96,7 +100,7 @@ public class VectorStoreConfig {
         String collectionName = "documents";
         String vectorFieldName = "embedding";
         int dimension = 1024; // match your Ollama embeddings
-        MetricType metricType = MetricType.L2;
+        MetricType metricType = MetricType.COSINE;
 
         try {
             // 1. Create collection if it doesn't exist
@@ -109,10 +113,21 @@ public class VectorStoreConfig {
                         .withFieldTypes(
                                 List.of(
                                         FieldType.newBuilder()
-                                                .withName("id")
-                                                .withDataType(DataType.Int64)
+                                                .withName("doc_id")
+                                                .withDataType(DataType.VarChar)
+                                                .withMaxLength(255)
                                                 .withPrimaryKey(true)
-                                                .withAutoID(true)
+                                                .withAutoID(false)
+                                                .build(),
+                                        FieldType.newBuilder()
+                                                .withName("content")
+                                                .withDataType(DataType.VarChar)
+                                                .withMaxLength(65535)
+                                                .build(),
+                                        FieldType.newBuilder()
+                                                .withName("metadata")
+                                                .withDataType(DataType.JSON)
+                                                .withMaxLength(65535)
                                                 .build(),
                                         FieldType.newBuilder()
                                                 .withName(vectorFieldName)
@@ -153,7 +168,7 @@ public class VectorStoreConfig {
                 }
             } catch (Exception e) {
                 // If describeIndex fails, try to create the index anyway
-                System.err.println("Could not check if index exists, attempting to create: " + e.getMessage());
+                logger.error("Could not check if index exists, attempting to create", e);
                 client.createIndex(CreateIndexParam.newBuilder()
                         .withCollectionName(collectionName)
                         .withFieldName(vectorFieldName)
@@ -171,7 +186,7 @@ public class VectorStoreConfig {
                     .build());
         } catch (Exception e) {
             // Log the error but don't fail the application startup
-            System.err.println("Failed to initialize Milvus collection: " + e.getMessage());
+            logger.error("Failed to initialize Milvus collection", e);
         }
     }
 }
